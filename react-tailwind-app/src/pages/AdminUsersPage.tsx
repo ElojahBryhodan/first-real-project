@@ -1,0 +1,194 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+interface User {
+  id: string;
+  email: string;
+  username: string;
+  balanceCents: number;
+  wins: number;
+  losses: number;
+  role: string;
+  createdAt: string;
+}
+
+interface AdminUsersPageProps {
+  token: string | null;
+  user: { role: string } | null;
+}
+
+export function AdminUsersPage({ token, user }: AdminUsersPageProps) {
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<User[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) return;
+
+    // Check if user is admin
+    if (user?.role !== 'ADMIN') {
+      navigate('/dashboard');
+      return;
+    }
+
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+        const response = await fetch(`${baseUrl}/api/admin/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const text = await response.text().catch(() => '');
+          setError(text || 'Помилка завантаження користувачів');
+          return;
+        }
+
+        const data = (await response.json()) as { users: User[] };
+        setUsers(data.users || []);
+      } catch (err) {
+        console.error(err);
+        setError('Проблеми з мережею. Спробуй ще раз.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchUsers();
+  }, [token, user, navigate]);
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'text-purple-400';
+      case 'USER':
+        return 'text-slate-400';
+      default:
+        return 'text-slate-400';
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'Адмін';
+      case 'USER':
+        return 'Користувач';
+      default:
+        return role;
+    }
+  };
+
+  return (
+    <main className="flex min-h-[calc(100vh-3.5rem)] items-start justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 px-4 py-8">
+      <div className="w-full max-w-4xl">
+        <div className="mb-6 rounded-3xl border border-purple-800 bg-purple-900/20 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
+            Адмін: Список користувачів
+          </h1>
+          <p className="mt-2 text-sm text-slate-300">
+            Всі користувачі платформи
+          </p>
+        </div>
+
+        {isLoading && (
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-8 text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-600 border-t-purple-400"></div>
+            <p className="mt-4 text-sm text-slate-300">Завантаження користувачів...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-3xl border border-rose-800 bg-rose-900/20 p-6">
+            <div className="flex items-start gap-3">
+              <span className="text-rose-400 text-xl">⚠️</span>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-rose-300 mb-1">Помилка завантаження</h3>
+                <p className="text-sm text-rose-400">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && !error && users.length === 0 && (
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-8 text-center">
+            <div className="text-4xl mb-4">👥</div>
+            <h3 className="text-lg font-semibold text-slate-200 mb-2">Немає користувачів</h3>
+            <p className="text-sm text-slate-400">Поки що на платформі немає користувачів</p>
+          </div>
+        )}
+
+        {!isLoading && !error && users.length > 0 && (
+          <div className="space-y-4">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="mb-2 flex items-center gap-3">
+                      <h3 className="text-lg font-semibold text-slate-50">
+                        {user.username}
+                      </h3>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${getRoleColor(user.role)}`}
+                      >
+                        {getRoleLabel(user.role)}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-xs text-slate-300">
+                      <p>
+                        Email:{' '}
+                        <span className="font-medium text-slate-200">
+                          {user.email}
+                        </span>
+                      </p>
+                      <p>
+                        ID:{' '}
+                        <span className="font-mono text-xs text-slate-400">
+                          {user.id}
+                        </span>
+                      </p>
+                      <p>
+                        Баланс:{' '}
+                        <span className="font-medium text-sky-300">
+                          {(user.balanceCents / 100).toFixed(2)} $
+                        </span>
+                      </p>
+                      <p>
+                        Статистика:{' '}
+                        <span className="font-medium text-emerald-300">
+                          {user.wins} перемог
+                        </span>
+                        {' / '}
+                        <span className="font-medium text-rose-300">
+                          {user.losses} поразок
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {new Date(user.createdAt).toLocaleDateString('uk-UA', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
