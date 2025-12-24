@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth';
 import { matchesRouter } from './routes/matches';
 import { statsRouter } from './routes/stats';
 import { adminRouter } from './routes/admin';
+import { superAdminRouter } from './routes/superAdmin';
 
 export const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/matches', matchesRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/super-admin', superAdminRouter);
 
 app.use(errorHandler);
 

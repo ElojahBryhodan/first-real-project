@@ -10,35 +10,50 @@ const createMatchSchema = zod_1.z.object({
     game: zod_1.z.string().min(1),
     entryFeeCents: zod_1.z.number().int().nonnegative().optional(),
 });
-exports.matchesRouter.get('/', auth_1.authMiddleware, async (_req, res, next) => {
+exports.matchesRouter.get('/', auth_1.authMiddleware, async (req, res, next) => {
     try {
-        const matches = await client_1.prisma.match.findMany({
-            orderBy: { createdAt: 'desc' },
-            take: 50,
-            include: {
-                createdBy: {
-                    select: {
-                        id: true,
-                        username: true,
-                        email: true,
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+        const skip = (page - 1) * limit;
+        const [matches, total] = await Promise.all([
+            client_1.prisma.match.findMany({
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+                include: {
+                    createdBy: {
+                        select: {
+                            id: true,
+                            username: true,
+                            email: true,
+                        },
+                    },
+                    joinedBy: {
+                        select: {
+                            id: true,
+                            username: true,
+                            email: true,
+                        },
+                    },
+                    winner: {
+                        select: {
+                            id: true,
+                            username: true,
+                        },
                     },
                 },
-                joinedBy: {
-                    select: {
-                        id: true,
-                        username: true,
-                        email: true,
-                    },
-                },
-                winner: {
-                    select: {
-                        id: true,
-                        username: true,
-                    },
-                },
+            }),
+            client_1.prisma.match.count(),
+        ]);
+        return res.json({
+            matches,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
             },
         });
-        return res.json({ matches });
     }
     catch (err) {
         return next(err);
@@ -463,6 +478,28 @@ exports.matchesRouter.post('/:id/dispute', auth_1.authMiddleware, async (req, re
         const userId = req.user.userId;
         const match = await client_1.prisma.match.findUnique({
             where: { id: matchId },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+                joinedBy: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+                winner: {
+                    select: {
+                        id: true,
+                        username: true,
+                    },
+                },
+            },
         });
         if (!match) {
             return res.status(404).json({ error: 'Match not found' });
@@ -483,6 +520,28 @@ exports.matchesRouter.post('/:id/dispute', auth_1.authMiddleware, async (req, re
             where: { id: matchId },
             data: {
                 status: 'DISPUTE',
+            },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+                joinedBy: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+                winner: {
+                    select: {
+                        id: true,
+                        username: true,
+                    },
+                },
             },
         });
         console.log('[match] Disputed', { matchId: updated.id, userId });

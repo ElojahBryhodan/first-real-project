@@ -1,36 +1,28 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import type { UserRole } from '../App';
 
 interface User {
   id: string;
   email: string;
   username: string;
-  balanceCents: number;
-  wins: number;
-  losses: number;
-  role: string;
+  role: UserRole;
   createdAt: string;
 }
 
 interface AdminUsersPageProps {
   token: string | null;
-  user: { role: string } | null;
+  user: { role: UserRole } | null;
 }
 
 export function AdminUsersPage({ token, user }: AdminUsersPageProps) {
-  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
     if (!token) return;
-
-    // Check if user is admin
-    if (user?.role !== 'ADMIN') {
-      navigate('/dashboard');
-      return;
-    }
 
     const fetchUsers = async () => {
       try {
@@ -60,10 +52,54 @@ export function AdminUsersPage({ token, user }: AdminUsersPageProps) {
     };
 
     void fetchUsers();
-  }, [token, user, navigate]);
+  }, [token]);
 
-  const getRoleColor = (role: string) => {
+  const handleRoleChange = async (userId: string, newRole: 'USER' | 'ADMIN') => {
+    if (!token) return;
+
+    setUpdatingUserId(userId);
+    setError(null);
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+      const response = await fetch(`${baseUrl}/api/super-admin/users/${userId}/role`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Помилка зміни ролі' }));
+        setError(data.error || 'Помилка зміни ролі');
+        return;
+      }
+
+      // Refresh users list
+      const usersResponse = await fetch(`${baseUrl}/api/admin/users`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (usersResponse.ok) {
+        const usersData = (await usersResponse.json()) as { users: User[] };
+        setUsers(usersData.users || []);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Проблеми з мережею. Спробуй ще раз.');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const getRoleColor = (role: UserRole) => {
     switch (role) {
+      case 'SUPER_ADMIN':
+        return 'text-amber-400';
       case 'ADMIN':
         return 'text-purple-400';
       case 'USER':
@@ -73,8 +109,10 @@ export function AdminUsersPage({ token, user }: AdminUsersPageProps) {
     }
   };
 
-  const getRoleLabel = (role: string) => {
+  const getRoleLabel = (role: UserRole) => {
     switch (role) {
+      case 'SUPER_ADMIN':
+        return 'Супер Адмін';
       case 'ADMIN':
         return 'Адмін';
       case 'USER':
@@ -87,12 +125,18 @@ export function AdminUsersPage({ token, user }: AdminUsersPageProps) {
   return (
     <main className="flex min-h-[calc(100vh-3.5rem)] items-start justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 px-4 py-8">
       <div className="w-full max-w-4xl">
-        <div className="mb-6 rounded-3xl border border-purple-800 bg-purple-900/20 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur">
+        <div className={`mb-6 rounded-3xl border p-6 shadow-2xl shadow-slate-950/60 backdrop-blur ${
+          isSuperAdmin 
+            ? 'border-amber-800 bg-amber-900/20' 
+            : 'border-purple-800 bg-purple-900/20'
+        }`}>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
-            Адмін: Список користувачів
+            {isSuperAdmin ? 'Супер Адмін: Управління користувачами' : 'Адмін: Список користувачів'}
           </h1>
           <p className="mt-2 text-sm text-slate-300">
-            Всі користувачі платформи
+            {isSuperAdmin 
+              ? 'Управління ролями користувачів (підвищення до адміна, пониження до користувача)'
+              : 'Всі користувачі платформи'}
           </p>
         </div>
 
@@ -125,66 +169,81 @@ export function AdminUsersPage({ token, user }: AdminUsersPageProps) {
 
         {!isLoading && !error && users.length > 0 && (
           <div className="space-y-4">
-            {users.map((user) => (
+            {users.map((userItem) => {
+              const isUpdating = updatingUserId === userItem.id;
+              const canPromote = isSuperAdmin && userItem.role === 'USER';
+              const canDemote = isSuperAdmin && userItem.role === 'ADMIN';
+              const isSuperAdminUser = userItem.role === 'SUPER_ADMIN';
+
+              return (
               <div
-                key={user.id}
+                  key={userItem.id}
                 className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="mb-2 flex items-center gap-3">
                       <h3 className="text-lg font-semibold text-slate-50">
-                        {user.username}
+                          {userItem.username}
                       </h3>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${getRoleColor(user.role)}`}
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${getRoleColor(userItem.role)}`}
                       >
-                        {getRoleLabel(user.role)}
+                          {getRoleLabel(userItem.role)}
                       </span>
                     </div>
                     <div className="space-y-1 text-xs text-slate-300">
                       <p>
                         Email:{' '}
                         <span className="font-medium text-slate-200">
-                          {user.email}
+                            {userItem.email}
                         </span>
                       </p>
                       <p>
                         ID:{' '}
                         <span className="font-mono text-xs text-slate-400">
-                          {user.id}
-                        </span>
-                      </p>
-                      <p>
-                        Баланс:{' '}
-                        <span className="font-medium text-sky-300">
-                          {(user.balanceCents / 100).toFixed(2)} $
-                        </span>
-                      </p>
-                      <p>
-                        Статистика:{' '}
-                        <span className="font-medium text-emerald-300">
-                          {user.wins} перемог
-                        </span>
-                        {' / '}
-                        <span className="font-medium text-rose-300">
-                          {user.losses} поразок
+                            {userItem.id}
                         </span>
                       </p>
                     </div>
                   </div>
+                    <div className="flex flex-col items-end gap-2">
                   <div className="text-xs text-slate-400">
-                    {new Date(user.createdAt).toLocaleDateString('uk-UA', {
+                        {new Date(userItem.createdAt).toLocaleDateString('uk-UA', {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
+                      </div>
+                      {isSuperAdmin && !isSuperAdminUser && (
+                        <div className="flex gap-2">
+                          {canPromote && (
+                            <button
+                              onClick={() => handleRoleChange(userItem.id, 'ADMIN')}
+                              disabled={isUpdating}
+                              className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isUpdating ? '...' : 'Підвищити до Адміна'}
+                            </button>
+                          )}
+                          {canDemote && (
+                            <button
+                              onClick={() => handleRoleChange(userItem.id, 'USER')}
+                              disabled={isUpdating}
+                              className="rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isUpdating ? '...' : 'Понизити до Користувача'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

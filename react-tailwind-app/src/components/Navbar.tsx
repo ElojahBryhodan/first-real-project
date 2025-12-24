@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
+import type { UserRole } from '../App';
 
 interface NavbarProps {
   isAuthenticated: boolean;
-  user: { role: string } | null;
+  user: { role: UserRole } | null;
   onLogout: () => void;
 }
 

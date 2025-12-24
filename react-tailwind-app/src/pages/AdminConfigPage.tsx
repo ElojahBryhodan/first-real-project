@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { UserRole } from '../App';
 
 interface PlatformConfig {
   id: number;
@@ -9,7 +10,7 @@ interface PlatformConfig {
 
 interface AdminConfigPageProps {
   token: string | null;
-  user: { role: string } | null;
+  user: { role: UserRole } | null;
 }
 
 export function AdminConfigPage({ token, user }: AdminConfigPageProps) {
@@ -23,12 +24,6 @@ export function AdminConfigPage({ token, user }: AdminConfigPageProps) {
 
   useEffect(() => {
     if (!token) return;
-
-    // Check if user is admin
-    if (user?.role !== 'ADMIN') {
-      navigate('/dashboard');
-      return;
-    }
 
     const fetchConfig = async () => {
       try {

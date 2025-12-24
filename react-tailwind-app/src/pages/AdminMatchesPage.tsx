@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import type { UserRole } from '../App';
 
 interface Match {
   id: string;
@@ -27,7 +28,7 @@ interface Match {
 
 interface AdminMatchesPageProps {
   token: string | null;
-  user: { role: string } | null;
+  user: { role: UserRole } | null;
 }
 
 export function AdminMatchesPage({ token, user }: AdminMatchesPageProps) {
@@ -38,12 +39,6 @@ export function AdminMatchesPage({ token, user }: AdminMatchesPageProps) {
 
   useEffect(() => {
     if (!token) return;
-
-    // Check if user is admin
-    if (user?.role !== 'ADMIN') {
-      navigate('/dashboard');
-      return;
-    }
 
     const fetchMatches = async () => {
       try {

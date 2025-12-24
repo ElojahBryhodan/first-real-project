@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../prisma/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
-import { adminOnly } from '../middleware/admin';
+import { requireAdmin } from '../middleware/admin';
 
 export const adminRouter = Router();
 
@@ -10,7 +10,7 @@ const resolveSchema = z.object({
   winnerId: z.string().uuid(),
 });
 
-adminRouter.get('/matches', authMiddleware, adminOnly, async (_req: AuthenticatedRequest, res, next) => {
+adminRouter.get('/matches', authMiddleware, requireAdmin, async (_req: AuthenticatedRequest, res, next) => {
   try {
     const matches = await prisma.match.findMany({
       orderBy: { createdAt: 'desc' },
@@ -43,7 +43,7 @@ adminRouter.get('/matches', authMiddleware, adminOnly, async (_req: Authenticate
   }
 });
 
-adminRouter.get('/users', authMiddleware, adminOnly, async (_req: AuthenticatedRequest, res, next) => {
+adminRouter.get('/users', authMiddleware, requireAdmin, async (_req: AuthenticatedRequest, res, next) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
@@ -51,9 +51,6 @@ adminRouter.get('/users', authMiddleware, adminOnly, async (_req: AuthenticatedR
         id: true,
         email: true,
         username: true,
-        balanceCents: true,
-        wins: true,
-        losses: true,
         role: true,
         createdAt: true,
       },
@@ -64,7 +61,7 @@ adminRouter.get('/users', authMiddleware, adminOnly, async (_req: AuthenticatedR
   }
 });
 
-adminRouter.get('/config', authMiddleware, adminOnly, async (_req: AuthenticatedRequest, res, next) => {
+adminRouter.get('/config', authMiddleware, requireAdmin, async (_req: AuthenticatedRequest, res, next) => {
   try {
     const config = await prisma.platformConfig.findUnique({
       where: { id: 1 },
@@ -91,7 +88,7 @@ const updateCommissionSchema = z.object({
   commissionBps: z.number().int().min(0).max(10000), // 0-100% in basis points
 });
 
-adminRouter.put('/config/commission', authMiddleware, adminOnly, async (req: AuthenticatedRequest, res, next) => {
+adminRouter.put('/config/commission', authMiddleware, requireAdmin, async (req: AuthenticatedRequest, res, next) => {
   try {
     const parsed = updateCommissionSchema.parse(req.body);
 
@@ -125,7 +122,7 @@ adminRouter.put('/config/commission', authMiddleware, adminOnly, async (req: Aut
 adminRouter.post(
   '/matches/:id/resolve',
   authMiddleware,
-  adminOnly,
+  requireAdmin,
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const matchId = req.params.id;

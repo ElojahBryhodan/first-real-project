@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
-    "make-admin": "ts-node scripts/make-admin.ts"
+    "make-admin": "ts-node scripts/make-admin.ts",
+    "make-super-admin": "ts-node scripts/make-super-admin.ts"
   },
   "keywords": [],
   "author": "",

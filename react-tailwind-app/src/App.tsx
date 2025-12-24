@@ -11,6 +11,8 @@ import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminConfigPage } from './pages/AdminConfigPage';
 import { StatsPage } from './pages/StatsPage';
 
+export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+
 export type CurrentUser = {
   id: string;
   email: string;
@@ -18,7 +20,7 @@ export type CurrentUser = {
   balanceCents: number;
   wins: number;
   losses: number;
-  role: string;
+  role: UserRole;
   createdAt: string;
 };
 
@@ -114,6 +116,46 @@ function App() {
     return children;
   }
 
+  function RequireAdmin({ children }: { children: JSX.Element }) {
+    if (isCheckingAuth) {
+      return (
+        <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-slate-950 px-4">
+          <p className="text-sm text-slate-300">Завантаження...</p>
+        </main>
+      );
+    }
+
+    if (!token) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return children;
+  }
+
+  function RequireSuperAdmin({ children }: { children: JSX.Element }) {
+    if (isCheckingAuth) {
+      return (
+        <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-slate-950 px-4">
+          <p className="text-sm text-slate-300">Завантаження...</p>
+        </main>
+      );
+    }
+
+    if (!token) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (!user || user.role !== 'SUPER_ADMIN') {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return children;
+  }
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-950 text-slate-50">
@@ -178,25 +220,25 @@ function App() {
           <Route
             path="/admin/matches"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <AdminMatchesPage token={token} user={user} />
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
             path="/admin/users"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <AdminUsersPage token={token} user={user} />
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
             path="/admin/config"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <AdminConfigPage token={token} user={user} />
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
         </Routes>

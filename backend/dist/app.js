@@ -12,7 +12,9 @@ const env_1 = require("./utils/env");
 const errorHandler_1 = require("./middleware/errorHandler");
 const auth_1 = require("./routes/auth");
 const matches_1 = require("./routes/matches");
+const stats_1 = require("./routes/stats");
 const admin_1 = require("./routes/admin");
+const superAdmin_1 = require("./routes/superAdmin");
 exports.app = (0, express_1.default)();
 exports.app.use(express_1.default.json());
 exports.app.use((0, cors_1.default)({
@@ -26,5 +28,7 @@ exports.app.get('/health', (_req, res) => {
 });
 exports.app.use('/api/auth', auth_1.authRouter);
 exports.app.use('/api/matches', matches_1.matchesRouter);
+exports.app.use('/api/stats', stats_1.statsRouter);
 exports.app.use('/api/admin', admin_1.adminRouter);
+exports.app.use('/api/super-admin', superAdmin_1.superAdminRouter);
 exports.app.use(errorHandler_1.errorHandler);
